@@ -22,40 +22,56 @@
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
-// Module:  pc_reg
-// File:    pc_reg.v
+// Module:  id_ex
+// File:    id_ex.v
 // Author:  Lei Silei
 // E-mail:  leishangwen@163.com
-// Description: 指令指针寄存器PC
+// Description: ID/EX阶段的寄存器
 // Revision: 1.0
 //////////////////////////////////////////////////////////////////////
 
 `include "defines.v"
 
-module pc_reg(
+module id_ex(
 
-	input	wire				clk, //时钟信号
-	input	wire				rst, //复位信号
+	input	wire					clk,
+	input wire						rst,
+
 	
-	output reg[`InstAddrBus]	pc,  //要读取的指令的地址
-	output reg                  ce	 //指令存储器使能信号
+	//从译码阶段传递的信息
+	input wire[`AluOpBus]         id_aluop, //子类型
+	input wire[`AluSelBus]        id_alusel,//类型
+	input wire[`RegBus]           id_reg1,  //源操作数1
+	input wire[`RegBus]           id_reg2,	//源操作数2
+	input wire[`RegAddrBus]       id_wd,	//要写入的目的寄存器地址
+	input wire                    id_wreg,	//是否要写入目的寄存器
+	
+	//传递到执行阶段的信息
+	output reg[`AluOpBus]         ex_aluop,
+	output reg[`AluSelBus]        ex_alusel,
+	output reg[`RegBus]           ex_reg1,
+	output reg[`RegBus]           ex_reg2,
+	output reg[`RegAddrBus]       ex_wd,
+	output reg                    ex_wreg
 	
 );
 
-	always @ (posedge clk) begin		// 时钟上升沿的就把pc进行更新，这里联想到计组是不是一个cc就可以改了？不必等5个cc再更新？
-		if (ce == `ChipDisable) begin  //指令存储器禁用的时候，pc为0。挺好理解的，存储器不开的时候，就算有pc也不能从存储器里面拿指令
-			pc <= 32'h00000000;
-		end else begin            // 指令存储器使能的时候，pc的值每时钟周期加4。这边加4是因为指令是4B
-	 		pc <= pc + 4'h4;
+	always @ (posedge clk) begin
+		if (rst == `RstEnable) begin
+			ex_aluop <= `EXE_NOP_OP;
+			ex_alusel <= `EXE_RES_NOP;
+			ex_reg1 <= `ZeroWord;
+			ex_reg2 <= `ZeroWord;
+			ex_wd <= `NOPRegAddr;
+			ex_wreg <= `WriteDisable;
+		end else begin		
+			ex_aluop <= id_aluop;//前边怎么传进来的，后边就怎么传出
+			ex_alusel <= id_alusel;
+			ex_reg1 <= id_reg1;
+			ex_reg2 <= id_reg2;
+			ex_wd <= id_wd;
+			ex_wreg <= id_wreg;		
 		end
 	end
 	
-	always @ (posedge clk) begin
-		if (rst == `RstEnable) begin  // 复位的时候指令存储器禁用
-			ce <= `ChipDisable;
-		end else begin
-			ce <= `ChipEnable;	// 复位结束后，指令存储器使能
-		end
-	end
-
 endmodule

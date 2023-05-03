@@ -22,39 +22,38 @@
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
-// Module:  pc_reg
-// File:    pc_reg.v
+// Module:  if_id
+// File:    if_id.v
 // Author:  Lei Silei
 // E-mail:  leishangwen@163.com
-// Description: 指令指针寄存器PC
+// Description: IF/ID阶段的寄存器
 // Revision: 1.0
 //////////////////////////////////////////////////////////////////////
 
 `include "defines.v"
 
-module pc_reg(
+module if_id(
 
-	input	wire				clk, //时钟信号
-	input	wire				rst, //复位信号
+	input	wire				  clk, //时钟信号
+	input wire					  rst, //复位信号
 	
-	output reg[`InstAddrBus]	pc,  //要读取的指令的地址
-	output reg                  ce	 //指令存储器使能信号
+	// 来自取指令阶段的信号，其中宏定义InstBus表示指令宽度，为32
+	input wire[`InstAddrBus]	  if_pc, // pc_reg模块输出的pc作为输入
+	input wire[`InstBus]          if_inst,//pc_reg模块输出的pc从指令存储器取出的指令作为输入
+
+	// 对应译码阶段的信号
+	output reg[`InstAddrBus]      id_pc, //用来传递上述两个信号
+	output reg[`InstBus]          id_inst  
 	
 );
 
-	always @ (posedge clk) begin		// 时钟上升沿的就把pc进行更新，这里联想到计组是不是一个cc就可以改了？不必等5个cc再更新？
-		if (ce == `ChipDisable) begin  //指令存储器禁用的时候，pc为0。挺好理解的，存储器不开的时候，就算有pc也不能从存储器里面拿指令
-			pc <= 32'h00000000;
-		end else begin            // 指令存储器使能的时候，pc的值每时钟周期加4。这边加4是因为指令是4B
-	 		pc <= pc + 4'h4;
-		end
-	end
-	
 	always @ (posedge clk) begin
-		if (rst == `RstEnable) begin  // 复位的时候指令存储器禁用
-			ce <= `ChipDisable;
-		end else begin
-			ce <= `ChipEnable;	// 复位结束后，指令存储器使能
+		if (rst == `RstEnable) begin
+			id_pc <= `ZeroWord;	//复位的时候pc为0
+			id_inst <= `ZeroWord;	//复位的时候指令也为0，实际就是空指令
+	  end else begin
+		  id_pc <= if_pc;	// 其余时刻向下传递取值阶段的值
+		  id_inst <= if_inst;
 		end
 	end
 
